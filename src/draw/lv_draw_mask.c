@@ -211,6 +211,11 @@ LV_ATTRIBUTE_FAST_MEM uint8_t lv_draw_mask_get_cnt(void)
     return cnt;
 }
 
+bool lv_draw_mask_is_any(void)
+{
+    return LV_GC_ROOT(_lv_draw_mask_list[0]).param ? true : false;
+}
+
 /**
  *Initialize a line mask from two points.
  * @param param pointer to a `lv_draw_mask_param_t` to initialize

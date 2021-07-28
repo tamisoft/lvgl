@@ -269,6 +269,13 @@ void _lv_draw_mask_cleanup(void);
  */
 LV_ATTRIBUTE_FAST_MEM uint8_t lv_draw_mask_get_cnt(void);
 
+
+/**
+ * Check is there is any added draw mask
+ * @return true: there is t least 1 draw mask; false: there are no draw masks
+ */
+bool lv_draw_mask_is_any(void);
+
 //! @endcond
 
 /**
