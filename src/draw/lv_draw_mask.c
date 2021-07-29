@@ -1208,6 +1208,7 @@ static void circ_calc_aa4(_lv_draw_mask_radius_circle_dsc_t * c, lv_coord_t radi
     if(c->buf) lv_mem_free(c->buf);
 
     c->buf = lv_mem_alloc(radius * 6 + 6);  /*Use uint16_t for opa_start_on_y and x_start_on_y*/
+    LV_ASSERT_MALLOC(c->buf);
     c->cir_opa = c->buf;
     c->opa_start_on_y = (uint16_t *) (c->buf + 2 * radius + 2);
     c->x_start_on_y = (uint16_t *) (c->buf + 4 * radius + 4);
