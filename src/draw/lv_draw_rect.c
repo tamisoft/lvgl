@@ -185,32 +185,79 @@ LV_ATTRIBUTE_FAST_MEM static void draw_bg(const lv_area_t * coords, const lv_are
     }
 
     int32_t h;
-    int32_t h_end = coords_bg.y1 + rout;
     lv_draw_mask_res_t mask_res;
     lv_area_t blend_area;
     blend_area.x1 = draw_area.x1;
     blend_area.x2 = draw_area.x2;
 
-    /* Draw the top of the rectangle line by line.
+
+    /*There is an other mask too. Draw line by line. */
+    if(mask_any) {
+        for(h = draw_area.y1; h <= draw_area.y2; h++) {
+            blend_area.y1 = h;
+            blend_area.y2 = h;
+
+            lv_memset_ff(mask_buf, draw_area_w);
+            mask_res = lv_draw_mask_apply(mask_buf, draw_area.x1, h, draw_area_w);
+
+            if(grad_dir == LV_GRAD_DIR_NONE) {
+                _lv_blend_fill(clip_area, &blend_area, dsc->bg_color, mask_buf, mask_res, opa, dsc->blend_mode);
+            }
+            else if(grad_dir == LV_GRAD_DIR_HOR) {
+                _lv_blend_map(clip_area, &blend_area, grad_map, mask_buf, mask_res, opa, dsc->blend_mode);
+            }
+            else if(grad_dir == LV_GRAD_DIR_VER) {
+                lv_color_t c = grad_get(dsc, coords_h, h - coords_bg.y1);
+                _lv_blend_fill(clip_area, &blend_area, c, mask_buf, mask_res, opa, dsc->blend_mode);
+            }
+        }
+        goto bg_clean_up;
+    }
+
+
+    /* Draw the top of the rectangle line by line and mirror it to the bottom.
      * If there is no radius this cycle won't run because `h` is always `>= h_end`*/
-    for(h = draw_area.y1; h < h_end; h++) {
-        blend_area.y1 = h;
-        blend_area.y2 = h;
+    blend_area.x1 = draw_area.x1;
+    blend_area.x2 = draw_area.x2;
+    for(h = 0; h < rout; h++) {
+        lv_coord_t top_y = coords_bg.y1 + h;
+        lv_coord_t bottom_y = coords_bg.y2 - h;
+        if(top_y < draw_area.y1 && bottom_y > draw_area.y2) continue;   /*This line is clipped now*/
 
         lv_memset_ff(mask_buf, draw_area_w);
-        mask_res = lv_draw_mask_apply(mask_buf, draw_area.x1, h, draw_area_w);
+        mask_res = lv_draw_mask_apply(mask_buf, blend_area.x1, top_y, draw_area_w);
 
-        if(grad_dir == LV_GRAD_DIR_NONE) {
-            _lv_blend_fill(clip_area, &blend_area, dsc->bg_color, mask_buf, mask_res, opa, dsc->blend_mode);
-        }
-        else if(grad_dir == LV_GRAD_DIR_HOR) {
-            _lv_blend_map(clip_area, &blend_area, grad_map, mask_buf, mask_res, opa, dsc->blend_mode);
-        }
-        else if(grad_dir == LV_GRAD_DIR_VER) {
-            lv_color_t c = grad_get(dsc, coords_h, h - coords_bg.y1);
-            _lv_blend_fill(clip_area, &blend_area, c, mask_buf, mask_res, opa, dsc->blend_mode);
+        if(top_y >= draw_area.y1) {
+            blend_area.y1 = top_y;
+            blend_area.y2 = top_y;
+
+            if(grad_dir == LV_GRAD_DIR_NONE) {
+                _lv_blend_fill(clip_area, &blend_area, dsc->bg_color, mask_buf, mask_res, opa, dsc->blend_mode);
+            }
+            else if(grad_dir == LV_GRAD_DIR_HOR) {
+                _lv_blend_map(clip_area, &blend_area, grad_map, mask_buf, mask_res, opa, dsc->blend_mode);
+            }
+            else if(grad_dir == LV_GRAD_DIR_VER) {
+                lv_color_t c = grad_get(dsc, coords_h, top_y - coords_bg.y1);
+                _lv_blend_fill(clip_area, &blend_area, c, mask_buf, mask_res, opa, dsc->blend_mode);
+            }
         }
 
+        if(bottom_y <= draw_area.y2) {
+            blend_area.y1 = bottom_y;
+            blend_area.y2 = bottom_y;
+
+            if(grad_dir == LV_GRAD_DIR_NONE) {
+                _lv_blend_fill(clip_area, &blend_area, dsc->bg_color, mask_buf, mask_res, opa, dsc->blend_mode);
+            }
+            else if(grad_dir == LV_GRAD_DIR_HOR) {
+                _lv_blend_map(clip_area, &blend_area, grad_map, mask_buf, mask_res, opa, dsc->blend_mode);
+            }
+            else if(grad_dir == LV_GRAD_DIR_VER) {
+                lv_color_t c = grad_get(dsc, coords_h, bottom_y - coords_bg.y1);
+                _lv_blend_fill(clip_area, &blend_area, c, mask_buf, mask_res, opa, dsc->blend_mode);
+            }
+        }
     }
 
     /* Draw the center of the rectangle.*/
@@ -247,29 +294,8 @@ LV_ATTRIBUTE_FAST_MEM static void draw_bg(const lv_area_t * coords, const lv_are
         }
     }
 
-    /* Draw the bottom of the rectangle line by line.
-     * If there is no radius this cycle won't run because `h` is always `<= h_end`*/
-    h_end = draw_area.y2;
-    for(h = coords_bg.y2 - rout + 1; h <= h_end; h++) {
-        blend_area.y1 = h;
-        blend_area.y2 = h;
 
-        lv_memset_ff(mask_buf, draw_area_w);
-        mask_res = lv_draw_mask_apply(mask_buf, draw_area.x1, h, draw_area_w);
-
-        if(grad_dir == LV_GRAD_DIR_NONE) {
-            _lv_blend_fill(clip_area, &blend_area, dsc->bg_color, mask_buf, mask_res, opa, dsc->blend_mode);
-        }
-        else if(grad_dir == LV_GRAD_DIR_HOR) {
-            _lv_blend_map(clip_area, &blend_area, grad_map, mask_buf, mask_res, opa, dsc->blend_mode);
-        }
-        else if(grad_dir == LV_GRAD_DIR_VER) {
-            lv_color_t c = grad_get(dsc, coords_h, h - coords_bg.y1);
-            _lv_blend_fill(clip_area, &blend_area, c, mask_buf, mask_res, opa, dsc->blend_mode);
-        }
-
-    }
-
+bg_clean_up:
     if(grad_map) lv_mem_buf_release(grad_map);
     if(mask_buf) lv_mem_buf_release(mask_buf);
     if(mask_rout_id != LV_MASK_ID_INV) {
@@ -1124,6 +1150,7 @@ void draw_border_generic(const lv_area_t * clip_area, const lv_area_t * outer_ar
     core_area.x2 = LV_MIN(outer_area->x2 - rout, inner_area->x2);
     core_area.y1 = LV_MAX(outer_area->y1 + rout, inner_area->y1);
     core_area.y2 = LV_MIN(outer_area->y2 - rout, inner_area->y2);
+    lv_coord_t core_w = lv_area_get_width(&core_area);
 
     bool top_side = outer_area->y1 <= inner_area->y1 ? true : false;
     bool bottom_side = outer_area->y2 >= inner_area->y2 ? true : false;
@@ -1156,8 +1183,15 @@ void draw_border_generic(const lv_area_t * clip_area, const lv_area_t * outer_ar
     bool left_side = outer_area->x1 <= inner_area->x1 ? true : false;
     bool right_side = outer_area->x2 >= inner_area->x2 ? true : false;
 
+    bool split_hor = true;
+    if(left_side && right_side && top_side && bottom_side &&
+       core_w < SPLIT_LIMIT)
+    {
+        split_hor = false;
+    }
+
     /*Draw the straight lines first if they are long enough*/
-    if(top_side) {
+    if(top_side && split_hor) {
         blend_area.x1 = core_area.x1;
         blend_area.x2 = core_area.x2;
         blend_area.y1 = outer_area->y1;
@@ -1165,7 +1199,7 @@ void draw_border_generic(const lv_area_t * clip_area, const lv_area_t * outer_ar
         _lv_blend_fill(clip_area, &blend_area, color, NULL, LV_DRAW_MASK_RES_FULL_COVER, opa, blend_mode);
     }
 
-    if(bottom_side) {
+    if(bottom_side && split_hor) {
         blend_area.x1 = core_area.x1;
         blend_area.x2 = core_area.x2;
         blend_area.y1 = inner_area->y2 + 1;
@@ -1192,59 +1226,87 @@ void draw_border_generic(const lv_area_t * clip_area, const lv_area_t * outer_ar
     /*Draw the corners*/
     lv_coord_t blend_w;
 
-    /*Left corners*/
-    blend_area.x1 = draw_area.x1;
-    blend_area.x2 = LV_MIN(draw_area.x2, core_area.x1 - 1);
-    blend_w = lv_area_get_width(&blend_area);
-    if(left_side && blend_w > 0) {
-        if(top_side) {
-            for(h = draw_area.y1; h < core_area.y1; h++) {
-                blend_area.y1 = h;
-                blend_area.y2 = h;
+    /*Left and right corner together is they close to eachother*/
+    if(!split_hor) {
+        /*Calculate the top corner and mirror it to the bottom*/
+        blend_area.x1 = draw_area.x1;
+        blend_area.x2 = draw_area.x2;
+        lv_coord_t max_h = LV_MAX(rout, outer_area->y1 - inner_area->y1);
+        for(h = 0; h < max_h; h++) {
+            lv_coord_t top_y = outer_area->y1 + h;
+            lv_coord_t bottom_y = outer_area->y2 - h;
+            if(top_y < draw_area.y1 && bottom_y > draw_area.y2) continue;   /*This line is clipped now*/
 
-                lv_memset_ff(mask_buf, blend_w);
-                mask_res = lv_draw_mask_apply(mask_buf, blend_area.x1, h, blend_w);
+            lv_memset_ff(mask_buf, draw_area_w);
+            mask_res = lv_draw_mask_apply(mask_buf, blend_area.x1, top_y, draw_area_w);
+
+            if(top_y >= draw_area.y1) {
+                blend_area.y1 = top_y;
+                blend_area.y2 = top_y;
+                _lv_blend_fill(clip_area, &blend_area, color, mask_buf, mask_res, opa, blend_mode);
+            }
+
+            if(bottom_y <= draw_area.y2) {
+                blend_area.y1 = bottom_y;
+                blend_area.y2 = bottom_y;
                 _lv_blend_fill(clip_area, &blend_area, color, mask_buf, mask_res, opa, blend_mode);
             }
         }
+    } else {
+        /*Left corners*/
+        blend_area.x1 = draw_area.x1;
+        blend_area.x2 = LV_MIN(draw_area.x2, core_area.x1 - 1);
+        blend_w = lv_area_get_width(&blend_area);
+        if(left_side && blend_w > 0) {
+            if(top_side) {
+                for(h = draw_area.y1; h < core_area.y1; h++) {
+                    blend_area.y1 = h;
+                    blend_area.y2 = h;
 
-        if(bottom_side) {
-            for(h = core_area.y2 + 1; h <= draw_area.y2; h++) {
-                blend_area.y1 = h;
-                blend_area.y2 = h;
+                    lv_memset_ff(mask_buf, blend_w);
+                    mask_res = lv_draw_mask_apply(mask_buf, blend_area.x1, h, blend_w);
+                    _lv_blend_fill(clip_area, &blend_area, color, mask_buf, mask_res, opa, blend_mode);
+                }
+            }
 
-                lv_memset_ff(mask_buf, blend_w);
-                mask_res = lv_draw_mask_apply(mask_buf, blend_area.x1, h, blend_w);
-                _lv_blend_fill(clip_area, &blend_area, color, mask_buf, mask_res, opa, blend_mode);
+            if(bottom_side) {
+                for(h = core_area.y2 + 1; h <= draw_area.y2; h++) {
+                    blend_area.y1 = h;
+                    blend_area.y2 = h;
+
+                    lv_memset_ff(mask_buf, blend_w);
+                    mask_res = lv_draw_mask_apply(mask_buf, blend_area.x1, h, blend_w);
+                    _lv_blend_fill(clip_area, &blend_area, color, mask_buf, mask_res, opa, blend_mode);
+                }
             }
         }
-    }
 
-    /*Right corners*/
-    blend_area.x1 = LV_MAX(draw_area.x1, core_area.x2 + 1);
-    blend_area.x2 = draw_area.x2;
-    blend_w = lv_area_get_width(&blend_area);
+        /*Right corners*/
+        blend_area.x1 = LV_MAX(draw_area.x1, core_area.x2 + 1);
+        blend_area.x2 = draw_area.x2;
+        blend_w = lv_area_get_width(&blend_area);
 
-    if(right_side && blend_w > 0) {
-        if(top_side) {
-            for(h = draw_area.y1; h < core_area.y1; h++) {
-                blend_area.y1 = h;
-                blend_area.y2 = h;
+        if(right_side && blend_w > 0) {
+            if(top_side) {
+                for(h = draw_area.y1; h < core_area.y1; h++) {
+                    blend_area.y1 = h;
+                    blend_area.y2 = h;
 
-                lv_memset_ff(mask_buf, blend_w);
-                mask_res = lv_draw_mask_apply(mask_buf, blend_area.x1, h, blend_w);
-                _lv_blend_fill(clip_area, &blend_area, color, mask_buf, mask_res, opa, blend_mode);
+                    lv_memset_ff(mask_buf, blend_w);
+                    mask_res = lv_draw_mask_apply(mask_buf, blend_area.x1, h, blend_w);
+                    _lv_blend_fill(clip_area, &blend_area, color, mask_buf, mask_res, opa, blend_mode);
+                }
             }
-        }
 
-        if(bottom_side) {
-            for(h = core_area.y2 + 1; h <= draw_area.y2; h++) {
-                blend_area.y1 = h;
-                blend_area.y2 = h;
+            if(bottom_side) {
+                for(h = core_area.y2 + 1; h <= draw_area.y2; h++) {
+                    blend_area.y1 = h;
+                    blend_area.y2 = h;
 
-                lv_memset_ff(mask_buf, blend_w);
-                mask_res = lv_draw_mask_apply(mask_buf, blend_area.x1, h, blend_w);
-                _lv_blend_fill(clip_area, &blend_area, color, mask_buf, mask_res, opa, blend_mode);
+                    lv_memset_ff(mask_buf, blend_w);
+                    mask_res = lv_draw_mask_apply(mask_buf, blend_area.x1, h, blend_w);
+                    _lv_blend_fill(clip_area, &blend_area, color, mask_buf, mask_res, opa, blend_mode);
+                }
             }
         }
     }
