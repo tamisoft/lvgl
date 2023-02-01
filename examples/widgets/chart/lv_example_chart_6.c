@@ -25,7 +25,7 @@ static void event_cb(lv_event_t * e)
         lv_coord_t * data_array = lv_chart_get_y_array(chart, ser);
         lv_coord_t v = data_array[last_id];
         char buf[16];
-        lv_snprintf(buf, sizeof(buf), "%d", v);
+        lv_snprintf(buf, sizeof(buf), "%ld", v);
 
         lv_point_t size;
         lv_txt_get_size(&size, buf, LV_FONT_DEFAULT, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
